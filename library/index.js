@@ -120,61 +120,264 @@ app.get("/api/auth/profile", auth, (req, res) => {
 }) 
 
 app.get("/api/books", auth, (req, res) => {
-   
+   try {
+        let sql = 'SELECT * FROM books';
+    
+        const params = [];
+
+        if (req.query.genre) {
+        sql += ' WHERE genre = ?';
+        params.push(req.query.genre);
+        }
+
+        if (req.query.author) {
+        sql += params.length ? ' AND author = ?' : ' WHERE author = ?';
+        params.push(req.query.author);
+        }
+
+        sql += ' ORDER BY createdAt DESC';
+
+        const books = db.prepare(sql).all(...params);
+
+        res.json(books);
+  } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Не удалось получить список книг" });
+    }
 })
 
 app.get("/api/books/:id", (req, res) => {
-   
+  try {
+        const book = db.prepare('SELECT * FROM books WHERE id = ?').get(req.params.id);
+
+        if (!book) {
+        return res.status(404).json({ error: "Книга не найдена" });
+        }
+
+        const reviews = db.prepare('SELECT * FROM reviews WHERE bookId = ? ORDER BY createdAt DESC').all(req.params.id);
+        res.json({ ...book, reviews });
+
+  } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Книга не получена" });
+    } 
 })
 
 app.post("/api/books", auth, (req, res) => {
     try {
-        const { title, author, year, genre, description } = req.body
+        const { title, author, year, genre, description } = req.body;
 
-        if (!title || !author) {
-            return res.status(400)({ error: "Название и автор обязательны" })
+        if (!title || !author || !year || !genre || !description) {
+        return res.status(400).json({ error: "Все поля обязательны" });
         }
 
         const info = db.prepare(`
-        INSERT INTO books (title, author, year, genre, description) 
-        VALUES (?, ?, ?, ?, ?)
-        `).run(title.trim(), author.trim(), year, genre, description)
+        INSERT INTO books (title, author, year, genre, description, user_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+        `).run(title.trim(), author.trim(), year, genre.trim(), description.trim(), req.user.id);
 
-
-    } catch (err) {
-        
+        const newBook = db.prepare('SELECT * FROM books WHERE id = ?').get(info.lastInsertRowid);
+        res.status(201).json(newBook);
+  } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Не удалось создать книгу" });
     }
 })
 
 app.put("/api/books/:id", auth, (req, res) => {
-   
+   try {
+        const { id } = req.params
+
+        const { title, author, year, genre, description } = req.body
+
+        const book = db.prepare(`
+        SELECT * FROM books WHERE id = ?
+        `).get(id)
+
+        if (!book) {
+            return res.status(404).json({ error: "Не удалось найти книгу" });
+        }
+
+        if (req.user.role !== 'admin' && book.createdBy !== req.user.id) {
+            return res.status(403).json({ error: "Вы можете менять только свою книгу" });
+        }
+
+
+        const updates = []
+        const params = []
+
+        if (title !== undefined) {
+            updates.push('title = ?')
+            params.push(title.trim())
+        }
+
+        if (author !== undefined) {
+            updates.push('author = ?')
+            params.push(author.trim())
+        }
+
+        if (year !== undefined) {
+            updates.push('year = ?')
+            params.push(year)
+        }
+
+        if (genre !== undefined) {
+            updates.push('genre = ?')
+            params.push(genre)
+        }
+
+        if (description !== undefined) {
+            updates.push('description = ?')
+            params.push(description)
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: "Не обновляется" })
+        }
+
+        params.push(id)
+
+        const query = `UPDATE books SET ${updates.join(', ')} WHERE id = ?`
+        db.prepare(query).run(params)
+
+       const updatedBook = db.prepare(`
+        SELECT * FROM books WHERE id = ?
+        `).get(id) 
+        res.json(updatedBook)
+
+} catch (error) {
+        console.error(error)
+        return res.status(500).json({ error: "Ошибка обновления" })
+    }
 })
 
 app.delete("/api/books/:id", auth, (req, res) => {
-   
+   try {
+        const book = db.prepare('SELECT * FROM books WHERE id = ?').get(req.params.id);
+
+        if (!book) {
+            return res.status(404).json({ error: "Книга не найдена" });
+            }
+
+        if (req.user.role !== 'admin' && book.user_id !== req.user.id) {
+            return res.status(403).json({ error: "Вы можете удалять только свои книги" });
+            }
+
+        db.prepare('DELETE FROM books WHERE id = ?').run(req.params.id);
+        res.status(204).send();
+
+  } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Книжка не удалилась" });
+    }
 })
 
 app.post("/api/books/:id/reviews", auth, (req, res) => {
+    try {
+        const { id: bookId } = req.params
+        const { rating, comment } = req.body
+
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).json({ error: "Поставь рэйтинг" });
+        }
+        const book = db.prepare('SELECT * FROM books WHERE id = ?').get(bookId);
+
+        if (!book) {
+            return res.status(404).json({ error: "Книга не найдена" });
+            }
+
+        const info = db.prepare(`
+        INSERT INTO reviews (bookId, userId, rating, comment)
+        VALUES (?, ?, ?, ?)
+        `).run(bookId, req.user.id, rating, comment || null);
+
+        const newReview = db.prepare(`
+        SELECT r.*, u.username FROM reviews r JOIN users u ON r.userId = u.id WHERE r.id = ? 
+        `).get(info.lastInsertRowid)
+
+        res.status(201).json(newReview);
+
+    } catch (error) {
+        console.error(err);
+        res.status(500).json({ error: "Отзыв не добавился" });
+    }
    
 })
 
 app.get("/api/books/:id/reviews", (req, res) => {
+    try {
+        const { id } = req.params
+
+        const reviews = db.prepare(`
+        SELECT r.id, r.rating, r.comment, r.createdAt, u.username  
+        FROM reviews r JOIN users u ON r.userId = u.id WHERE r.bookId = ? 
+        ORDER BY createdAr DESC
+        `).all(id)
+
+    } catch (error) {
+        console.error(err);
+        res.status(500).json({ error: "Отзыв не получен" });
+    }
    
 })
 
 app.delete("/api/reviews/:id", auth, (req, res) => {
-   
+    try {
+        const { id } = req.params
+
+        const review = db.prepare(`
+        SELECT * FROM reviews WHERE id = ?
+        `).get(id)
+
+        if(!review) {
+            return res.status(404).json({ error: "Отзыв не найден" });
+        }
+
+        if (req.user.role !== 'admin' && review.userId) {
+            return res.status(403).json({ error: "Вы можете удалить только свой отзыв" });
+        }
+
+        db.prepare(`DELETE FROM reviews WHERE id = ?`).run(id)
+        res.status(204).send()
+
+    } catch (error) {
+        console.error(err);
+        res.status(500).json({ error: "Отзыв не удалился хахахах" });
+    }
 })
 
-app.get("/api/admin/users", admin, (req, res) => {
-   
+app.get("/api/admin/users", auth, checkRole('admin'), (req, res) => {
+   try {
+    const users = db.prepare(`
+        SELECT id, username, email, role, createdAt FROM users
+        `).all()
+    res.json(users)
+    
+   } catch (error) {
+        console.error(err);
+        res.status(500).json({ error: "Проблема получения" });
+   }
 })
 
-app.delete("/api/admin/users/:id", admin, (req, res) => {
-   
+app.delete("/api/admin/users/:id", auth, checkRole('admin'), (req, res) => {
+   try {
+        const { id } = req.params
+
+        const user = db.prepare(`
+        SELECT id FROM users WHERE id = ?
+        `).get(id)
+
+        if (!user) {
+            return res.status(404).json({ error: "Юзер не найден"}) 
+        }
+
+        db.prepare(`DELETE FROM users WHERE id = ?`).run(id)
+        res.status(204).send()
+    
+   } catch (error) {
+        console.error(err);
+        res.status(500).json({ error: "Проблема получения юзера" });
+   }
 })
-
-
-
 
 app.listen(PORT)

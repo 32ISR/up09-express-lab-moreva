@@ -34,29 +34,78 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bookId INTEGER NOT NULL,
     userId INTEGER NOT NULL,
-    rating INTEGER, 
+    rating INTEGER CHECK(rating >= 1 AND rating <= 5), 
     comment TEXT, 
     createdAt TEXT DEFAULT (datetime('now'))
+    FOREIGN KEY (bookId) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
   );
 `);
 
 const salt = bcr.genSaltSync(10)
-const adminHash = bcr.hashSync('qwerty123', salt)
-const userHash = bcr.hashSync('qwerty123', salt)
 
-const insertUser = db.prepare('INSERT IGNORE INTO users (username, email, password, role) VALUES (?, ?, ?, ?)')
+const adminExists = db.prepare(`SELECT id FROM users WHERE username = ?`).get('admin')
 
-const resultUser = insertUser.run('morelllin', 'lenork890@gmail.com', 'qwerty123', 'admin').lastInsertRowid
-const resulAdmin = insertUser.run('morevaelena', 'elenamoreva@mail.ru', 'qwerty123', 'user').lastInsertRowid
+  if (!adminExists) {
 
-const insertBook = db.prepare('INSERT IGNORE INTO books (title, author, year, genre, description, user_id) VALUES (?, ?, ?, ?, ?, ?)');
-insertBook.run('The house at the edge of the night', 'Katherine Banner', '2000', 'The family saga', 'A book about love and family', resultUser.lastInsertRowid);
+  const adminHash = bcr.hashSync('qwerty123', salt)
 
-const booksWithUsers = db
-    .prepare(
-        ` SELECT books.id, books.title, books.author, users.username AS added_by FROM books JOIN users ON books.user_id = users.id `,
-    )
-    .all()
-console.log(booksWithUsers)
+  db.prepare(`
+    INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)')
+    `).run('morelllin', 'lenork890@gmail.com', adminHash, 'admin') }
+
+const userExists = db.prepare(`SELECT id FROM users WHERE username = ?`).get('user')
+
+  if (!userExists) {
+
+  const userHash = bcr.hashSync('qwerty123', salt)
+
+  db.prepare(`
+    INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)')
+    `).run('morevaelena', 'elenamoreva@mail.ru', userHash, 'user') }
+
+const adminUser = db.prepare (`
+  SELECT id FROM users WHERE username = ?
+  `).get('admin')
+
+const regularUser = db.prepare (`
+  SELECT id FROM users WHERE username = ?
+  `).get('user')
+
+const bookCount = db.prepare(`SELECT COUNT(*) as count FROM books`).get().count
+
+if (bookCount === 0) {
+  const insertBook = db.prepare(`
+  INSERT IGNORE INTO books (title, author, year, genre, description, user_id) VALUES (?, ?, ?, ?, ?, ?)
+  `); }
+
+const book = [
+  ['The House At The Edge Of The Night', 'Katherine Banner', '2015', 'The Family Saga', 'A book about love and family', regularUser.id]
+  ['Crime And Punishment', 'Fyodor Dostoevsky', '1866', 'Realism', 'Dude killed a grandmother', adminUser.id]
+  ['Anna Karenina', 'Leo Tolstoy', '1878', 'Realism', 'The dude threw herself under the train', adminUser.id]
+  ['Fathers And Children', 'Ivan Turgenev', '1862', 'Realism', 'Bazarov died, and I cried', regularUser.id]
+  ['The Godfather', 'Mario Puzo', '1969', 'Crime drama', 'Back and forth shooting games', adminUser.id]
+]
+
+for (const book of books) {
+  insertBook.run(...book)
+}
+
+const reviewCount = db.prepare(`SELECT COUNT(*) as count FROM reviews`).get().count
+
+if (reviewCount === 0) {
+  const insertReview = db.prepare(`
+  INSERT IGNORE INTO reviews (bookId, userId, rating, comment) VALUES (?, ?, ?, ?, ?, ?)
+  `); }
+
+const books = db.prepare(`SELECT id FROM books`).all()
+const users = db.prepare(`SELECT id FROM users`).all()
+
+const reviews = [
+  [books[0].id, users[0].id, 5, 'Имба']
+  [books[1].id, users[1].id, 4, 'Пойдет']
+
+]
+
 
 module.exports = db
