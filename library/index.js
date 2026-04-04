@@ -364,4 +364,7 @@ app.delete('/api/admin/users/:id', auth, checkRole('admin'), (req, res) => {
     }
 })
 
-app.listen(PORT)
+app.listen(PORT, () => {
+    console.log("Server started on port 3000");
+    
+})
