@@ -1,0 +1,19 @@
+info:
+  name: delete_users
+  type: http
+  seq: 13
+
+http:
+  method: DELETE
+  url: "api/admin/users/:id\t"
+  params:
+    - name: id
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

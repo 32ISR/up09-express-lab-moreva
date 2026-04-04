@@ -1,0 +1,22 @@
+info:
+  name: delete_reviews
+  type: http
+  seq: 11
+
+http:
+  method: DELETE
+  url: "{{base_url}}api/reviews/:id"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoibGVub3JrODkwQGdtYWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImNyZWF0ZWRBdCI6IjIwMjYtMDQtMDMgMTQ6MDE6MTEiLCJpYXQiOjE3NzUyNzIxNzMsImV4cCI6MTc3NTM1ODU3M30.AvAaE4Ll7xrr1RDnpA096gG6cY2iYR_1bk0CUq8deDk
+  params:
+    - name: id
+      value: "1"
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
