@@ -1,0 +1,28 @@
+info:
+  name: new_books
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{base_url}}api/books"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoibGVub3JrODkwQGdtYWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImNyZWF0ZWRBdCI6IjIwMjYtMDQtMDMgMTQ6MDE6MTEiLCJpYXQiOjE3NzUyNzIxNzMsImV4cCI6MTc3NTM1ODU3M30.AvAaE4Ll7xrr1RDnpA096gG6cY2iYR_1bk0CUq8deDk
+  body:
+    type: json
+    data: |-
+      {
+        "title": "A Song Of Ice And Fire",
+        "author": "George Martin",
+        "year": "1991",
+        "genre": "fantasy",
+        "description": "Dragons and intrigue"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

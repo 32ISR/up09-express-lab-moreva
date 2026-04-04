@@ -1,0 +1,28 @@
+info:
+  name: update_books
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: "{{base_url}}api/books/:id"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoibGVub3JrODkwQGdtYWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImNyZWF0ZWRBdCI6IjIwMjYtMDQtMDMgMTQ6MDE6MTEiLCJpYXQiOjE3NzUyNzIxNzMsImV4cCI6MTc3NTM1ODU3M30.AvAaE4Ll7xrr1RDnpA096gG6cY2iYR_1bk0CUq8deDk
+  params:
+    - name: id
+      value: "3"
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "description": "oak descriptions on 100500+ pages"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
